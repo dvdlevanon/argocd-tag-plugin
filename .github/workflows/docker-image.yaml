@@ -25,9 +25,6 @@ jobs:
       - name: Build and test plugin
         run: docker run --network none --env GOPATH="" --rm -v $PWD:/go/work ci make build
 
-      # - name: Build project
-      #   run: make build
-
       - name: Get the version
         id: get_version
         run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}

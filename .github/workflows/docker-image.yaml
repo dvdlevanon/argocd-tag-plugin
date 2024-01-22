@@ -1,0 +1,91 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      
+    - name: Checkout
+      uses: actions/checkout@v3
+    
+    - name: Build project
+      run: make build
+    
+    - name: Get the version
+      id: get_version
+      run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
+    
+    - name: Archive production artifacts
+      run: |
+        cp ./build/argocd-tag-plugin ./argocd-tag-plugin-${{ steps.get_version.outputs.VERSION }}-x86_64
+        tar -zcvf argocd-tag-plugin-${{ steps.get_version.outputs.VERSION }}-x86_64.tar.gz ./argocd-tag-plugin-${{ steps.get_version.outputs.VERSION }}-x86_64
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: argocd-tag-plugin-${{ steps.get_version.outputs.VERSION }}-x86_64.tar.gz
+        path: ./argocd-tag-plugin-${{ steps.get_version.outputs.VERSION }}-x86_64.tar.gz
+
+    - name: Docker login
+      env:
+        DOCKERHUB_USER: ${{secrets.DOCKERHUB_USER}}
+        DOCKERHUB_PASSWORD: ${{secrets.DOCKERHUB_PASSWORD}}
+      run: docker login -u $DOCKERHUB_USER -p $DOCKERHUB_PASSWORD
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+      
+    - name: Extract metadata (tags, labels) for Docker
+      id: meta
+      uses: docker/metadata-action@v3
+      with:
+        images: dvdlevanon/argocd-tag-plugin
+        tags: |
+          type=sha
+          type=ref,event=branch
+          type=semver,pattern=v{{version}}
+          type=semver,pattern=v{{major}}.{{minor}}
+          type=semver,pattern=v{{major}}
+          type=edge
+          
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v3
+      with:
+        context: .
+        file: ./Dockerfile
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      
+    - name: Checkout
+      uses: actions/checkout@v3
+    
+    - name: Get the version
+      id: get_version
+      run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
+    
+    - name: Download artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: argocd-tag-plugin-${{ steps.get_version.outputs.VERSION }}-x86_64.tar.gz
+    
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: './argocd-tag-plugin-${{ steps.get_version.outputs.VERSION }}-x86_64.tar.gz'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

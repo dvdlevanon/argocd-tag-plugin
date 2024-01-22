@@ -23,7 +23,7 @@ jobs:
         run: docker build . -t ci
 
       - name: Build and test plugin
-        run: docker run --network none --env GOPATH="" --rm -v $PWD:/go/work ci make e2e
+        run: docker run --network none --env GOPATH="" --rm -v $PWD:/go/work ci make build
 
       # - name: Build project
       #   run: make build

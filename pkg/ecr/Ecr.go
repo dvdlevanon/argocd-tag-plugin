@@ -38,13 +38,18 @@ func FindAvailableTags(url string, constraint string) ([]string, error) {
 		return nil, err
 	}
 
-	for result.NextToken != nil {
+	for {
 		for _, detail := range result.ImageDetails {
 			for _, tag := range detail.ImageTags {
+				fmt.Printf("%s\n", *tag)
 				if *tag == constraint {
 					return convertPtrSliceToStringSlice(detail.ImageTags), nil
 				}
 			}
+		}
+
+		if result.NextToken == nil {
+			break
 		}
 
 		input.NextToken = result.NextToken

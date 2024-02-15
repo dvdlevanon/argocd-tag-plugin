@@ -41,7 +41,6 @@ func FindAvailableTags(url string, constraint string) ([]string, error) {
 	for {
 		for _, detail := range result.ImageDetails {
 			for _, tag := range detail.ImageTags {
-				fmt.Printf("%s\n", *tag)
 				if *tag == constraint {
 					return convertPtrSliceToStringSlice(detail.ImageTags), nil
 				}
